@@ -209,14 +209,14 @@ def chatbot():
 
 @app.route('/get_chat_response', methods=['POST'])
 def get_chat_response():
-    msg = request.form.get('msg')  # Get user message from form
+    msg = request.form.get('msg')  
     if msg:
-        response = generate_chat_response(msg)  # Call the function that generates the chatbot response
+        response = generate_chat_response(msg)  
         return jsonify({'response': response})
     return jsonify({'error': 'No message received'})
 
 def generate_chat_response(text):
-    chat_history_ids = torch.tensor([]).long()  # Initialize chat history
+    chat_history_ids = torch.tensor([]).long()  
 
     new_user_input_ids = tokenizer.encode(text + tokenizer.eos_token, return_tensors='pt')
     attention_mask = torch.ones(new_user_input_ids.shape, dtype=torch.long)
@@ -233,6 +233,6 @@ def generate_chat_response(text):
 
 if __name__ == '__main__':
     with app.app_context():
-        db.create_all()  # Create new tables
+        db.create_all()  #
     app.run(debug=True, use_reloader=False, port=8000)
 
