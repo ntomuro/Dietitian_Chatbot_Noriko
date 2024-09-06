@@ -1,14 +1,10 @@
+import sys
 from flask import Flask, render_template, request, redirect, url_for, session, flash, jsonify
 from flask_sqlalchemy import SQLAlchemy
 from flask_migrate import Migrate
 from datetime import date
-from transformers import AutoModelForCausalLM, AutoTokenizer
 import requests
-import torch
-
-repo_id = "google/gemma-2b-it"
-model = AutoModelForCausalLM.from_pretrained(repo_id, torch_dtype="auto", low_cpu_mem_usage=True, token=True)
-tokenizer = AutoTokenizer.from_pretrained(repo_id, torch_dtype="auto", low_cpu_mem_usage=True, token=True)
+from ragm import ask
 
 app = Flask(__name__)
 app.config['SQLALCHEMY_DATABASE_URI'] = "sqlite:///dietbot.db"
@@ -211,11 +207,11 @@ def chatbot():
 def get_chat_response():
     msg = request.form.get('msg')  
     if msg:
-        response = generate_chat_response(msg)  
+        response = ask(query=msg)  
         return jsonify({'response': response})
     return jsonify({'error': 'No message received'})
 
-def generate_chat_response(text):
+'''def generate_chat_response(text):
     chat_history_ids = torch.tensor([]).long()  
 
     new_user_input_ids = tokenizer.encode(text + tokenizer.eos_token, return_tensors='pt')
@@ -229,10 +225,11 @@ def generate_chat_response(text):
         attention_mask=attention_mask
     )
     response = tokenizer.decode(chat_history_ids[:, new_user_input_ids.shape[-1]:][0], skip_special_tokens=True)
-    return response
+    return response'''
 
 if __name__ == '__main__':
     with app.app_context():
         db.create_all()  #
     app.run(debug=True, use_reloader=False, port=8000)
+
 
