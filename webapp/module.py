@@ -16,8 +16,6 @@ os.environ["CUDA_VISIBLE_DEVICES"] = "0,1,2,3"
 
 device = torch.device('cuda' if torch.cuda.is_available() else 'cpu')
 
-
-
 model_id = "google/gemma-2b-it"
 config = AutoConfig.from_pretrained(pretrained_model_name_or_path=model_id, hidden_activation="gelu_pytorch_tanh", token=True)
 tokenizer = AutoTokenizer.from_pretrained(pretrained_model_name_or_path=model_id, token=True)
