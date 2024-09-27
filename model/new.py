@@ -35,7 +35,7 @@ embedding_model = SentenceTransformer("all-mpnet-base-v2").to(device)
 csv_path = "dataset_folder/text_chunks_and_embeddings_df.csv"
 
 def load_data(csv_path: str):
-    global index  # Declare index as global so we can modify it
+    global index  
     df = pd.read_csv(csv_path)
     
     if "embedding" not in df.columns:
@@ -58,8 +58,6 @@ def retrieve_relevant_embeddings(query: str, n_results: int = 5) -> List[np.ndar
     return [embeddings[i] for i in indices[0]]
 
 def reconstruct_text_from_embedding(embedding: np.ndarray) -> str:
-    # This is a placeholder function. In a real scenario, you might use a more sophisticated
-    # method to reconstruct text from embeddings, or you might have a mapping of embeddings to original text.
     return f"[Content represented by embedding {hash(embedding.tobytes())%1000}]"
 
 def prompt_formatter(query: str, relevant_embeddings: List[np.ndarray]) -> str:

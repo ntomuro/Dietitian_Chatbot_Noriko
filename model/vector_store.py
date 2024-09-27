@@ -40,7 +40,6 @@ class VectorStore:
 def create_vector_store(csv_paths: List[str], index_path: str = "faiss_index.bin") -> VectorStore:
     vector_store = VectorStore(index_path)
     
-    # Use the first CSV to determine the dimension
     first_df = pd.read_csv(csv_paths[0])
     first_embedding = np.fromstring(first_df["embedding"].iloc[0].strip("[]"), sep=" ")
     dimension = len(first_embedding)
