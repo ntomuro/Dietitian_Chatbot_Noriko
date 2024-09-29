@@ -17,6 +17,7 @@ if device.type == 'cpu' and torch.backends.mps.is_available():
 
 print(f"Using device: {device}")
 
+
 # Init Model
 model_id = "google/gemma-2b-it"
 config = AutoConfig.from_pretrained(pretrained_model_name_or_path=model_id, hidden_activation="gelu_pytorch_tanh", token=True)
