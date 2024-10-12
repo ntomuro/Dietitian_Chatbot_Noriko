@@ -1,10 +1,14 @@
 import os
+import numpy as np
+import pandas as pd
 import torch
 from typing import List, Dict
 from sentence_transformers import SentenceTransformer
 from transformers import AutoTokenizer, AutoModelForCausalLM, AutoConfig
-from vector_store import create_vector_store, VectorStore
+import faiss
+from FlagEmbedding import FlagReranker
 
+# Set device
 os.environ["CUDA_DEVICE_ORDER"] = "PCI_BUS_ID"
 os.environ["CUDA_VISIBLE_DEVICES"] = "0,1,2,3"
 
@@ -14,7 +18,7 @@ if device.type == 'cpu' and torch.backends.mps.is_available():
 
 print(f"Using device: {device}")
 
-# Init Model
+# Initialize Models
 model_id = "google/gemma-2b-it"
 config = AutoConfig.from_pretrained(pretrained_model_name_or_path=model_id, hidden_activation="gelu_pytorch_tanh", token=True)
 tokenizer = AutoTokenizer.from_pretrained(pretrained_model_name_or_path=model_id, token=True)
@@ -25,18 +29,65 @@ llm_model = AutoModelForCausalLM.from_pretrained(pretrained_model_name_or_path=m
                                                  token=True)
 llm_model.to(device)
 
-embedding_model = SentenceTransformer("all-mpnet-base-v2").to(device)
+embedding_model = SentenceTransformer("all-mpnet-base-v2", device=device)
+reranker_model = FlagReranker('BAAI/bge-reranker-base', use_fp16=True)
 
-# Load or create vector store
-csv_paths = [
-    "dataset_folder/text_chunks_and_embeddings_df.csv",
-    # Add more CSV paths here
-]
-vector_store = create_vector_store(csv_paths)
+# Load embeddings
+csv_path = "dataset_folder/text_chunks_and_embeddings_df.csv"
+text_chunks_and_embedding_df = pd.read_csv(csv_path)
 
-def retrieve_relevant_resources(query: str, n_resources_to_return: int = 5) -> List[Dict]:
-    query_embedding = embedding_model.encode(query, convert_to_tensor=True, device=device)
-    return vector_store.search(query_embedding.cpu().numpy(), n_resources_to_return)
+# Convert string embeddings to numpy arrays and normalize
+text_chunks_and_embedding_df["embedding"] = text_chunks_and_embedding_df["embedding"].apply(lambda x: np.fromstring(x.strip("[]"), sep=" "))
+embeddings = np.vstack(text_chunks_and_embedding_df["embedding"].values)
+embeddings = embeddings / np.linalg.norm(embeddings, axis=1, keepdims=True)  # Normalize embeddings
+embeddings = embeddings.astype('float32')
+
+pages_and_chunks = text_chunks_and_embedding_df.to_dict(orient="records")
+dimension = embeddings.shape[1]
+
+# Check if a saved index exists
+index_path = "faiss_index.bin"
+if os.path.exists(index_path):
+    print("Loading existing FAISS index...")
+    index = faiss.read_index(index_path)
+else:
+    print("Creating new FAISS index...")
+    index = faiss.IndexFlatIP(dimension)
+    if device.type == 'cuda':
+        res = faiss.StandardGpuResources()
+        index = faiss.index_cpu_to_gpu(res, 0, index)
+    index.add(embeddings)
+    faiss.write_index(faiss.index_gpu_to_cpu(index) if device.type == 'cuda' else index, index_path)
+
+print(f"FAISS index contains {index.ntotal} vectors")
+
+def retrieve_relevant_resources(query: str, n_resources_to_return: int = 5, initial_k: int = 50) -> List[Dict]:
+    # Encode and normalize the query embedding
+    query_embedding = embedding_model.encode(query, normalize_embeddings=True)
+    if isinstance(query_embedding, torch.Tensor):
+        query_embedding = query_embedding.cpu().numpy()
+    query_embedding = query_embedding.reshape(1, -1).astype('float32')
+    
+    # Search in FAISS index
+    scores, indices = index.search(query_embedding, initial_k)
+    retrieved_items = [{"chunk": pages_and_chunks[i], "score": float(scores[0][j])} for j, i in enumerate(indices[0])]
+
+    # Prepare pairs for re-ranking
+    pairs = [[query, item['chunk']['sentence_chunk']] for item in retrieved_items]
+
+    # Compute re-ranker scores
+    reranker_scores = reranker_model.compute_score(pairs)
+    reranker_scores = reranker_scores.cpu().numpy()
+
+    # Update items with re-ranker scores
+    for item, score in zip(retrieved_items, reranker_scores):
+        item['reranker_score'] = float(score)
+
+    # Sort items based on re-ranker scores
+    retrieved_items.sort(key=lambda x: x['reranker_score'], reverse=True)
+
+    # Return top N items
+    return retrieved_items[:n_resources_to_return]
 
 def prompt_formatter(query: str, context_items: List[Dict]) -> str:
     context = "\n".join([f"[{i+1}] {item['chunk']['sentence_chunk']}" for i, item in enumerate(context_items)])
@@ -57,7 +108,7 @@ Here's my response:
 """
     return base_prompt
 
-def ask(query: str, temperature: float = 0.1, max_new_tokens: int = 512) -> str:
+def ask(query: str, temperature=0.8, max_new_tokens=512) -> str:
     try:
         context_items = retrieve_relevant_resources(query)
         prompt = prompt_formatter(query, context_items)
