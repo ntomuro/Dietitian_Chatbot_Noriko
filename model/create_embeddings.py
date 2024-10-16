@@ -1,5 +1,6 @@
 import os
 import tqdm
+
 from spacy.lang.en import English
 
 pdf_path = "nutrition_handbook.pdf"
