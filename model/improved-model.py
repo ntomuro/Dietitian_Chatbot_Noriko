@@ -19,7 +19,7 @@ print(f"Using device: {device}")
 
 
 # Init Model
-model_id = "google/gemma-2b-it"
+model_id = "meta-llama/Llama-3.1-8B-Instruct"
 config = AutoConfig.from_pretrained(pretrained_model_name_or_path=model_id, hidden_activation="gelu_pytorch_tanh", token=True)
 tokenizer = AutoTokenizer.from_pretrained(pretrained_model_name_or_path=model_id, token=True)
 llm_model = AutoModelForCausalLM.from_pretrained(pretrained_model_name_or_path=model_id, 
@@ -96,6 +96,7 @@ def ask(query: str, temperature = 0.8, max_new_tokens = 512) -> str:
                 top_p=0.95,
                 top_k=50,
                 repetition_penalty=1.2
+                pad_token_id=tokenizer.eos_token_id
             )
         
         output_text = tokenizer.decode(outputs[0], skip_special_tokens=True, clean_up_tokenization_spaces=True)
