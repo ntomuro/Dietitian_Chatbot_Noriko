@@ -96,7 +96,7 @@ def ask(query: str, temperature = 0.8, max_new_tokens = 512) -> str:
                 top_p=0.95,
                 top_k=50,
                 repetition_penalty=1.2
-                pad_token_id=tokenizer.eos_token_id
+                pad_token_id=tokenizer.eos_token_id,
             )
         
         output_text = tokenizer.decode(outputs[0], skip_special_tokens=True, clean_up_tokenization_spaces=True)
