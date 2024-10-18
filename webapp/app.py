@@ -6,6 +6,14 @@ from datetime import date
 import requests
 from model import ask
 
+import logging
+
+logging.basicConfig(level=logging.INFO)
+logger = logging.getLogger(__name__)
+
+# Example usage
+logger.info("Flask app is starting...")
+
 app = Flask(__name__)
 app.config['SQLALCHEMY_DATABASE_URI'] = "sqlite:///dietbot.db"
 app.config['SQLALCHEMY_TRACK_MODIFICATIONS'] = False
@@ -144,7 +152,10 @@ def submit_dish():
     dish_name = request.form['dish_name']
 
     # Call the API to get the nutritional info
-    response = requests.get(f'https://api.api-ninjas.com/v1/nutrition?query={dish_name}', headers={'X-Api-Key': 'iVUT3BZ+/515ojicGBCKcQ==gMVpcwVlveV3Jvp1'})
+    response = requests.get(
+        f'https://api.api-ninjas.com/v1/nutrition?query={dish_name}',
+        headers={'X-Api-Key': 'iVUT3BZ+/515ojicGBCKcQ==gMVpcwVlveV3Jvp1'}
+    )
     nutrition_data = response.json()
 
     if nutrition_data:
@@ -165,9 +176,17 @@ def submit_dish():
         sodium = safe_float(data.get('sodium_mg', 0))
 
         # Create a new DailyNutrientIntake record
-        new_intake = DailyNutrientIntake(user_id=user_id, date=date.today(), dish_name=dish_name,
-                                         calories=calories, protein=protein, fat=fat,
-                                         carbs=carbs, fiber=fiber, sodium=sodium)
+        new_intake = DailyNutrientIntake(
+            user_id=user_id,
+            date=date.today(),
+            dish_name=dish_name,
+            calories=calories,
+            protein=protein,
+            fat=fat,
+            carbs=carbs,
+            fiber=fiber,
+            sodium=sodium
+        )
         db.session.add(new_intake)
         db.session.commit()
 
@@ -176,7 +195,6 @@ def submit_dish():
         flash('Failed to retrieve nutritional information.', 'danger')
 
     return redirect(url_for('dashboard'))
-
 
 @app.route('/show_comparison')
 def show_comparison():
@@ -213,7 +231,5 @@ def get_chat_response():
 
 if __name__ == '__main__':
     with app.app_context():
-        db.create_all()  #
-    app.run(debug=True, use_reloader=False, port=8000)
-
-
+        db.create_all()
+    app.run(debug=True, host='0.0.0.0', port=8000)
