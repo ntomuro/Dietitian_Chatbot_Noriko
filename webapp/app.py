@@ -4,7 +4,7 @@ from flask_sqlalchemy import SQLAlchemy
 from flask_migrate import Migrate
 from datetime import date
 import requests
-from module import ask
+from model import ask
 
 app = Flask(__name__)
 app.config['SQLALCHEMY_DATABASE_URI'] = "sqlite:///dietbot.db"
@@ -205,27 +205,11 @@ def chatbot():
 
 @app.route('/get_chat_response', methods=['POST'])
 def get_chat_response():
-    msg = request.form.get('msg')  
+    msg = request.form.get('msg')
     if msg:
-        response = ask(query=msg)  
+        response = ask(query=msg)
         return jsonify({'response': response})
     return jsonify({'error': 'No message received'})
-
-'''def generate_chat_response(text):
-    chat_history_ids = torch.tensor([]).long()  
-
-    new_user_input_ids = tokenizer.encode(text + tokenizer.eos_token, return_tensors='pt')
-    attention_mask = torch.ones(new_user_input_ids.shape, dtype=torch.long)
-
-    # Generate response using model
-    chat_history_ids = model.generate(
-        new_user_input_ids,
-        max_length=1000,
-        pad_token_id=tokenizer.eos_token_id,
-        attention_mask=attention_mask
-    )
-    response = tokenizer.decode(chat_history_ids[:, new_user_input_ids.shape[-1]:][0], skip_special_tokens=True)
-    return response'''
 
 if __name__ == '__main__':
     with app.app_context():
