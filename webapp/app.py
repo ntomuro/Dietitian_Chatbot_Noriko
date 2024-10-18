@@ -123,7 +123,15 @@ def create_profile():
     weight = request.form['weight']
     activity_level = request.form['activity_level']
 
-    user = UserProfile(name=name, password=password, age=age, sex=sex, height=height, weight=weight, activity_level=activity_level)
+    user = UserProfile(
+        name=name, 
+        password=password, 
+        age=age, 
+        sex=sex, 
+        height=height, 
+        weight=weight, 
+        activity_level=activity_level
+    )
     db.session.add(user)
     db.session.commit()
 
@@ -203,7 +211,6 @@ def show_comparison():
     today = date.today()
 
     daily_nutrients = DailyNutrientIntake.query.filter_by(user_id=user_id, date=today).all()
-
     rdi = RDI_VALUES.get(user.sex, {}).get(user.activity_level, {})
 
     comparison = {
@@ -223,13 +230,13 @@ def chatbot():
 
 @app.route('/get_chat_response', methods=['POST'])
 def get_chat_response():
-    msg = request.form.get('msg')
+    msg = request.form.get('msg')  
     if msg:
-        response = ask(query=msg)
+        response = ask(query=msg)  
         return jsonify({'response': response})
     return jsonify({'error': 'No message received'})
 
 if __name__ == '__main__':
     with app.app_context():
         db.create_all()
-    app.run(debug=True, host='0.0.0.0', port=8000)
+    app.run(debug=True, host='0.0.0.0', use_reloader=False, port=8000)
